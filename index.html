@@ -228,22 +228,22 @@
         <div class="row">
           <label for="radius">Rayon extérieur</label>
           <div class="num">
-            <input id="radiusN" type="number" min="1" max="80" step="0.5" value="10">
+            <input id="radiusN" type="number" min="1" max="80" step="0.5" value="7.5">
             <span class="unit">m</span>
           </div>
         </div>
-        <input id="radius" type="range" min="1" max="80" step="0.5" value="10">
+        <input id="radius" type="range" min="1" max="80" step="0.5" value="7.5">
       </div>
 
       <div class="control">
         <div class="row">
           <label for="thickness">Épaisseur des murs</label>
           <div class="num">
-            <input id="thicknessN" type="number" min="0.2" max="10" step="0.1" value="1.2">
+            <input id="thicknessN" type="number" min="0.2" max="10" step="0.1" value="2.5">
             <span class="unit">m</span>
           </div>
         </div>
-        <input id="thickness" type="range" min="0.2" max="10" step="0.1" value="1.2">
+        <input id="thickness" type="range" min="0.2" max="10" step="0.1" value="2.5">
         <div class="hint">Rayon intérieur = rayon extérieur − épaisseur.</div>
       </div>
 
@@ -262,23 +262,23 @@
         <div class="row">
           <label for="floorH">Hauteur d’un étage</label>
           <div class="num">
-            <input id="floorHN" type="number" min="2" max="10" step="0.1" value="3.2">
+            <input id="floorHN" type="number" min="2" max="10" step="0.1" value="2.5">
             <span class="unit">m</span>
           </div>
         </div>
-        <input id="floorH" type="range" min="2" max="10" step="0.1" value="3.2">
+        <input id="floorH" type="range" min="2" max="10" step="0.1" value="2.5">
       </div>
 
       <div class="control">
         <div class="row">
           <label for="density">Densité de pierre (option)</label>
           <div class="num">
-            <input id="densityN" type="number" min="1800" max="3000" step="10" value="2400">
+            <input id="densityN" type="number" min="1800" max="3000" step="10" value="2600">
             <span class="unit">kg/m³</span>
           </div>
         </div>
-        <input id="density" type="range" min="1800" max="3000" step="10" value="2400">
-        <div class="hint">Ex : 2400 kg/m³ ≈ ordre de grandeur.</div>
+        <input id="density" type="range" min="1800" max="3000" step="10" value="2600">
+        <div class="hint">Ex : 2600 kg/m³ ≈ ordre de grandeur.</div>
       </div>
 
       <div id="warn" class="warn"></div>
@@ -380,16 +380,33 @@
 
       const massStoneT = (volStone * density) / 1000;
 
+      // Statistiques additionnelles
+      const areaTotalInner = areaInner * floors; // surface utile totale
+      const areaTotalOuter = areaOuter * floors; // footprint totale (si utile)
+      const perimOuter = 2 * pi * r;
+      const perimInner = 2 * pi * ri;
+      const wallLatAreaBoth = 2 * pi * (r + ri) * H; // surface verticale murs (faces ext.+int.)
+      const wallLatAreaPerLevel = 2 * pi * (r + ri) * fh;
+
       const stats = $("stats");
       stats.innerHTML =
         statCard("Hauteur totale", fmt(H,"m",1), `${floors} × ${fmt(fh,"m",1)}`)
         + statCard("Rayon intérieur", fmt(ri,"m",2), `diamètre int. ${fmt(2*ri,"m",2)}`)
         + statCard("Surface au sol (ext.)", fmt(areaOuter,"m²",1), `diamètre ext. ${fmt(2*r,"m",2)}`)
         + statCard("Surface utile (int.)", fmt(areaInner,"m²",1), "par niveau (approx.)")
+        + statCard("Surface utile totale", fmt(areaTotalInner,"m²",1), `${floors} niveaux`)
+        + statCard("Surface au sol totale (ext.)", fmt(areaTotalOuter,"m²",1), `${floors} niveaux`)
         + statCard("Volume total", fmt(volTotal,"m³",0), "murs inclus")
         + statCard("Volume intérieur", fmt(volInner,"m³",0), "hors murs")
         + statCard("Pierre (murs)", fmt(volStone,"m³",0), "sans ouvertures")
         + statCard("Masse de pierre (estim.)", fmt(massStoneT,"t",0), `${fmt(density,"kg/m³",0)}`);
+
+      // Périmètres et surface verticale des murs
+      stats.innerHTML +=
+        statCard("Périmètre ext.", fmt(perimOuter,"m",2))
+        + statCard("Périmètre int.", fmt(perimInner,"m",2))
+        + statCard("Surface verticale murs (ext.+int.)", fmt(wallLatAreaBoth,"m²",0), "faces ext. + int.")
+        + statCard("Surface murs / niveau", fmt(wallLatAreaPerLevel,"m²",0), "approx. par étage");
 
       drawPlan(r, ri);
       drawElevation(r, t, floors, fh);

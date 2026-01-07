@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tour / Donjon – Config + stats</title>
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --panel:#ffffff;
+      --border:#d9dde3;
+      --text:#111318;
+      --muted:#5b6472;
+      --focus:#2f6feb;
+      --warn:#b42318;
+
+      /* Layout fluid: le contenu peut s’étendre (4K) mais garde un padding lisible */
+      --pad: clamp(12px, 2vw, 28px);
+      --gap: clamp(10px, 1.4vw, 18px);
+      --radius: 12px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header{
+      padding: var(--pad);
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    header h1{
+      margin:0;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: .2px;
+    }
+    header p{
+      margin:6px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* Grille principale: fluide, sans max-width */
+    main{
+      padding: var(--pad);
+      display:grid;
+      grid-template-columns: minmax(320px, 520px) 1fr;
+      gap: var(--gap);
+      align-items:start;
+    }
+
+    /* Sur très grands écrans: on ajoute une 3e colonne pour aérer */
+    @media (min-width: 1600px){
+      main{
+        grid-template-columns: minmax(360px, 520px) 1fr 1fr;
+      }
+      /* Le panneau stats/visu prend 2 colonnes */
+      .results{ grid-column: span 2; }
+    }
+
+    @media (max-width: 980px){
+      main{ grid-template-columns: 1fr; }
+      .results{ grid-column: auto; }
+    }
+
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+    }
+
+    .card h2{
+      margin:0 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* Controls */
+    .control{
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+    }
+    .control:first-of-type{ border-top:0; padding-top:0; }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 140px;
+      gap: 12px;
+      align-items:center;
+      margin-bottom: 8px;
+    }
+    label{ font-size: 13px; color: var(--muted); }
+    .num{
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items:center;
+    }
+    input[type="number"]{
+      width:100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      outline:none;
+    }
+    input[type="number"]:focus{
+      border-color: var(--focus);
+      box-shadow: 0 0 0 3px rgba(47,111,235,.15);
+    }
+    .unit{ font-size: 12px; color: var(--muted); }
+
+    input[type="range"]{
+      width:100%;
+      margin: 0;
+      accent-color: var(--focus);
+    }
+
+    .hint{
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .warn{
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(180,35,24,.35);
+      background: rgba(180,35,24,.06);
+      color: var(--warn);
+      font-size: 13px;
+      display:none;
+    }
+
+    /* Stats */
+    .stats{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(240px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 520px){
+      .stats{ grid-template-columns: 1fr; }
+    }
+    .stat{
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: #fff;
+    }
+    .stat .k{ font-size: 12px; color: var(--muted); }
+    .stat .v{ font-size: 18px; font-weight: 750; margin-top: 3px; }
+    .stat .s{ font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* Viz */
+    .viz{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+    }
+    @media (max-width: 980px){
+      .viz{ grid-template-columns: 1fr; }
+    }
+    .vizbox{
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      background: #fff;
+    }
+    .vizbox .t{
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    svg{ display:block; width:100%; height: 280px; }
+
+    .legend{
+      display:flex;
+      gap: 12px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .chip{
+      display:inline-flex;
+      gap: 6px;
+      align-items:center;
+    }
+    .dot{
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      display:inline-block;
+      border: 1px solid var(--border);
+    }
+    .dot.outer{ background: rgba(47,111,235,.25); }
+    .dot.inner{ background: rgba(16,185,129,.22); }
+    .dot.wall { background: rgba(180,35,24,.20); }
+
+    .foot{
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tour / Donjon – Config + stats</h1>
+    <p>Sliders → calculs en direct + schémas simples (plan + élévation). Mise en page fluide, OK 4K.</p>
+  </header>
+
+  <main>
+    <!-- Paramètres -->
+    <section class="card">
+      <h2>Paramètres</h2>
+
+      <div class="control">
+        <div class="row">
+          <label for="radius">Rayon extérieur</label>
+          <div class="num">
+            <input id="radiusN" type="number" min="1" max="80" step="0.5" value="10">
+            <span class="unit">m</span>
+          </div>
+        </div>
+        <input id="radius" type="range" min="1" max="80" step="0.5" value="10">
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="thickness">Épaisseur des murs</label>
+          <div class="num">
+            <input id="thicknessN" type="number" min="0.2" max="10" step="0.1" value="1.2">
+            <span class="unit">m</span>
+          </div>
+        </div>
+        <input id="thickness" type="range" min="0.2" max="10" step="0.1" value="1.2">
+        <div class="hint">Rayon intérieur = rayon extérieur − épaisseur.</div>
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="floors">Nombre d’étages</label>
+          <div class="num">
+            <input id="floorsN" type="number" min="1" max="80" step="1" value="6">
+            <span class="unit">×</span>
+          </div>
+        </div>
+        <input id="floors" type="range" min="1" max="80" step="1" value="6">
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="floorH">Hauteur d’un étage</label>
+          <div class="num">
+            <input id="floorHN" type="number" min="2" max="10" step="0.1" value="3.2">
+            <span class="unit">m</span>
+          </div>
+        </div>
+        <input id="floorH" type="range" min="2" max="10" step="0.1" value="3.2">
+      </div>
+
+      <div class="control">
+        <div class="row">
+          <label for="density">Densité de pierre (option)</label>
+          <div class="num">
+            <input id="densityN" type="number" min="1800" max="3000" step="10" value="2400">
+            <span class="unit">kg/m³</span>
+          </div>
+        </div>
+        <input id="density" type="range" min="1800" max="3000" step="10" value="2400">
+        <div class="hint">Ex : 2400 kg/m³ ≈ ordre de grandeur.</div>
+      </div>
+
+      <div id="warn" class="warn"></div>
+    </section>
+
+    <!-- Résultats -->
+    <section class="card results">
+      <h2>Résultats</h2>
+
+      <div class="stats" id="stats"></div>
+
+      <div class="viz">
+        <div class="vizbox">
+          <div class="t">Plan (vue du dessus)</div>
+          <svg id="plan" viewBox="0 0 260 260" aria-label="Plan tour"></svg>
+          <div class="legend">
+            <span class="chip"><span class="dot outer"></span> extérieur</span>
+            <span class="chip"><span class="dot inner"></span> intérieur</span>
+            <span class="chip"><span class="dot wall"></span> mur</span>
+          </div>
+        </div>
+
+        <div class="vizbox">
+          <div class="t">Élévation (coupe)</div>
+          <svg id="elev" viewBox="0 0 420 260" aria-label="Élévation tour"></svg>
+          <div class="foot" id="scaleNote"></div>
+        </div>
+      </div>
+
+      <div class="foot" style="margin-top:12px;">
+        Hypothèses : cylindre parfait, murs sur toute la hauteur, pas d’ouvertures, pas de toiture, planchers/escaliers non comptés.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function fmt(n, unit="", digits=1){
+      const v = Number(n);
+      const opts = { maximumFractionDigits: digits };
+      return v.toLocaleString("fr-FR", opts) + (unit ? " " + unit : "");
+    }
+
+    function statCard(k, v, s=""){
+      return `
+        <div class="stat">
+          <div class="k">${k}</div>
+          <div class="v">${v}</div>
+          <div class="s">${s}</div>
+        </div>
+      `;
+    }
+
+    const links = [
+      ["radius","radiusN"],
+      ["thickness","thicknessN"],
+      ["floors","floorsN"],
+      ["floorH","floorHN"],
+      ["density","densityN"],
+    ];
+
+    for(const [r,n] of links){
+      const range = $(r);
+      const num = $(n);
+      num.value = range.value;
+
+      range.addEventListener("input", () => { num.value = range.value; recalc(); });
+      num.addEventListener("input", () => { range.value = num.value; recalc(); });
+    }
+
+    function recalc(){
+      const r = Number($("radius").value);
+      const t = Number($("thickness").value);
+      const floors = Math.round(Number($("floors").value));
+      const fh = Number($("floorH").value);
+      const density = Number($("density").value);
+
+      const warn = $("warn");
+      warn.style.display = "none";
+      warn.textContent = "";
+
+      const riRaw = r - t;
+      const ri = Math.max(0, riRaw);
+      if(riRaw <= 0){
+        warn.style.display = "block";
+        warn.textContent = "Épaisseur trop grande : le rayon intérieur devient nul/négatif. Augmente le rayon ou réduis l’épaisseur.";
+      }
+
+      const H = floors * fh;
+      const pi = Math.PI;
+
+      const areaOuter = pi * r * r;
+      const areaInner = pi * ri * ri;
+
+      const volTotal = areaOuter * H;
+      const volInner = areaInner * H;
+      const volStone = Math.max(0, volTotal - volInner);
+
+      const massStoneT = (volStone * density) / 1000;
+
+      const stats = $("stats");
+      stats.innerHTML =
+        statCard("Hauteur totale", fmt(H,"m",1), `${floors} × ${fmt(fh,"m",1)}`)
+        + statCard("Rayon intérieur", fmt(ri,"m",2), `diamètre int. ${fmt(2*ri,"m",2)}`)
+        + statCard("Surface au sol (ext.)", fmt(areaOuter,"m²",1), `diamètre ext. ${fmt(2*r,"m",2)}`)
+        + statCard("Surface utile (int.)", fmt(areaInner,"m²",1), "par niveau (approx.)")
+        + statCard("Volume total", fmt(volTotal,"m³",0), "murs inclus")
+        + statCard("Volume intérieur", fmt(volInner,"m³",0), "hors murs")
+        + statCard("Pierre (murs)", fmt(volStone,"m³",0), "sans ouvertures")
+        + statCard("Masse de pierre (estim.)", fmt(massStoneT,"t",0), `${fmt(density,"kg/m³",0)}`);
+
+      drawPlan(r, ri);
+      drawElevation(r, t, floors, fh);
+
+      const human = 1.75;
+      $("scaleNote").textContent = `Échelle : ${fmt(H/human,"hauteurs d’humain (1,75 m)",0)} environ.`;
+    }
+
+    function drawPlan(rOuter, rInner){
+      const svg = $("plan");
+      const W=260, H=260, cx=W/2, cy=H/2;
+
+      const maxR = Math.max(0.001, rOuter);
+      const pxOuter = 105;
+      const scale = pxOuter / maxR;
+
+      const Ro = rOuter * scale;
+      const Ri = rInner * scale;
+
+      svg.innerHTML = `
+        <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+        <circle cx="${cx}" cy="${cy}" r="${Ro}"
+          fill="rgba(47,111,235,0.08)" stroke="rgba(47,111,235,0.55)" stroke-width="2" />
+        <circle cx="${cx}" cy="${cy}" r="${Ri}"
+          fill="rgba(16,185,129,0.07)" stroke="rgba(16,185,129,0.55)" stroke-width="2" />
+        <circle cx="${cx}" cy="${cy}" r="${(Ro+Ri)/2}"
+          fill="none" stroke="rgba(180,35,24,0.45)" stroke-width="${Math.max(1, Ro-Ri)}" />
+        <text x="${cx}" y="${cy - Ro - 10}" text-anchor="middle"
+          fill="rgba(17,19,24,.65)" font-size="12">R ext. ${rOuter.toFixed(2)} m</text>
+        <text x="${cx}" y="${cy + Ro + 18}" text-anchor="middle"
+          fill="rgba(17,19,24,.55)" font-size="12">R int. ${rInner.toFixed(2)} m</text>
+      `;
+    }
+
+    function drawElevation(rOuter, thickness, floors, floorH){
+      const svg = $("elev");
+      const W=420, H=260, pad=16;
+      const totalH = floors * floorH;
+      const outerD = Math.max(0.001, 2 * rOuter);
+
+      const usableW = W - pad*2;
+      const usableH = H - pad*2;
+
+      const s = Math.min(usableW/outerD, usableH/Math.max(0.001,totalH));
+
+      const towerW = outerD * s;
+      const towerH = totalH * s;
+
+      const x0 = (W - towerW)/2;
+      const y0 = pad + (usableH - towerH)/2;
+
+      const wallPx = Math.max(1, thickness * s);
+      const innerD = Math.max(0, outerD - 2*thickness);
+      const innerW = innerD * s;
+      const innerX = (W - innerW)/2;
+
+      let lines="";
+      for(let i=1;i<floors;i++){
+        const y = y0 + towerH - (i*floorH*s);
+        lines += `<line x1="${x0}" y1="${y}" x2="${x0+towerW}" y2="${y}" stroke="rgba(0,0,0,.08)" />`;
+      }
+
+      svg.innerHTML = `
+        <rect x="0" y="0" width="${W}" height="${H}" fill="transparent"/>
+        <rect x="${x0}" y="${y0}" width="${towerW}" height="${towerH}"
+          fill="rgba(47,111,235,0.07)" stroke="rgba(47,111,235,0.55)" stroke-width="2" rx="10" />
+        <rect x="${innerX}" y="${y0}" width="${innerW}" height="${towerH}"
+          fill="rgba(16,185,129,0.05)" stroke="rgba(16,185,129,0.45)" stroke-width="1" rx="8" />
+        <rect x="${x0}" y="${y0}" width="${wallPx}" height="${towerH}" fill="rgba(180,35,24,0.18)" />
+        <rect x="${x0+towerW-wallPx}" y="${y0}" width="${wallPx}" height="${towerH}" fill="rgba(180,35,24,0.18)" />
+        ${lines}
+        <text x="${W/2}" y="${y0-6}" text-anchor="middle"
+          fill="rgba(17,19,24,.60)" font-size="12">H = ${totalH.toFixed(1)} m</text>
+        <text x="${W/2}" y="${y0+towerH+18}" text-anchor="middle"
+          fill="rgba(17,19,24,.52)" font-size="12">D ext. = ${(2*rOuter).toFixed(2)} m • murs ${thickness.toFixed(2)} m</text>
+      `;
+    }
+
+    recalc();
+  </script>
+</body>
+</html>
